@@ -14,7 +14,7 @@ public class UseShortUrlController extends ExceptionController {
 
     @GetMapping("/{shortKey}")
     public void redirect(@PathVariable String shortKey, HttpServletResponse response) {
-        String longUrl = urlShortenerService.findLongUrlByShortKey(shortKey);
+        String longUrl = urlShortenerService.useShortKey(shortKey);
         response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", longUrl);
     }

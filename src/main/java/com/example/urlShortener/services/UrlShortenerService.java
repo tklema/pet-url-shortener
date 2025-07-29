@@ -5,6 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Date;
 import java.util.Random;
 
 @Service
@@ -18,11 +22,17 @@ public class UrlShortenerService {
     @Value("${shortKeySize}")
     private Integer shortKeySize = 5;
 
+    @Value("${maxLiveTimeSeconds}")
+    private Long maxLiveTimeSeconds = 86400L;
+
     public String shortenUrl(String longUrl) {
         validateUrl(longUrl);
 
         try {
-            return findRedirectByLongUrl(longUrl).getShortenedUrl();
+            Redirect redirect = findRedirectByLongUrl(longUrl);
+            if (redirectIsAlive(redirect)) {
+                return redirect.getShortenedUrl();
+            }
         } catch (NotFoundException ignore) {
             // ignored
         }
@@ -42,8 +52,13 @@ public class UrlShortenerService {
         validateUrl(longUrl);
 
         String shortKey = shortenerCustom.getCustomKey();
-        if (repository.existsByShortKey(shortKey)) {
-            throw new AlreadyExistsException("this custom key already exists");
+        try {
+            Redirect redirect = findRedirectByShortKey(shortKey);
+            if (redirectIsAlive(redirect)) {
+                throw new AlreadyExistsException("this custom key already exists");
+            }
+        } catch (NotFoundException ignore) {
+            // ignored
         }
 
         String shortenedUrl = domainPart + shortKey;
@@ -65,11 +80,13 @@ public class UrlShortenerService {
                 new NotFoundException(String.format("redirect not found by shortKey: %s", shortKey)));
     }
 
-    public String findLongUrlByShortKey(String shortKey) {
-        validateShortKey(shortKey);
+    public String useShortKey(String shortKey) {
+        Redirect redirect = findRedirectByShortKey(shortKey);
 
-        Redirect redirect = repository.findByShortKey(shortKey)
-                .orElseThrow(() -> new RuntimeException("URL not found"));
+        if (!redirectIsAlive(redirect)) {
+            throw new NotFoundException(String.format("redirect not found by shortKey: %s", shortKey));
+        }
+
         redirect.incrementUsages();
 
         repository.save(redirect);
@@ -78,9 +95,21 @@ public class UrlShortenerService {
     }
 
     private void validateUrl(String url) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("HEAD");
+            int responseCode = connection.getResponseCode();
+            if (200 > responseCode || responseCode >= 400) {
+                throw new InvalidUrlException(String.format("invalid url: %s", url));
+            }
+        } catch (IOException e) {
+            throw new InvalidUrlException(String.format("invalid url: %s", url));
+        }
     }
 
-    private void validateShortKey(String shortKey) {
+    private boolean redirectIsAlive(Redirect redirect) {
+        long liveTime = (new Date().getTime() - redirect.getCreationDate().getTime()) / 1000;
+        return liveTime <= maxLiveTimeSeconds;
     }
 
     public ShortenedUrlStats getStatistic(String shortKey) {
