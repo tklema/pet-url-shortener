@@ -1,9 +1,6 @@
 package com.example.urlShortener.services;
 
-import com.example.urlShortener.model.NotFoundException;
-import com.example.urlShortener.model.Redirect;
-import com.example.urlShortener.model.ShortenedUrlStats;
-import com.example.urlShortener.model.UrlShortenerRepository;
+import com.example.urlShortener.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -40,20 +37,32 @@ public class UrlShortenerService {
         return shortenedUrl;
     }
 
+    public String shortenUrlCustom(ShortenerCustom shortenerCustom) {
+        String longUrl = shortenerCustom.getLongUrl();
+        validateUrl(longUrl);
+
+        String shortKey = shortenerCustom.getCustomKey();
+        if (repository.existsByShortKey(shortKey)) {
+            throw new AlreadyExistsException("this custom key already exists");
+        }
+
+        String shortenedUrl = domainPart + shortKey;
+
+        Redirect redirect = new Redirect(longUrl, shortKey, shortenedUrl);
+
+        repository.save(redirect);
+
+        return shortenedUrl;
+    }
+
     private Redirect findRedirectByLongUrl(String longUrl) {
         return repository.findByLongUrl(longUrl).orElseThrow(() ->
                 new NotFoundException(String.format("redirect not found by longUrl: %s", longUrl)));
     }
 
-    private String generateShortKey() {
-        final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        Random random = new Random();
-        StringBuilder stringBuilder = new StringBuilder(shortKeySize);
-        for (int i = 0; i < shortKeySize; i++) {
-            int randomIndex = random.nextInt(CHARACTERS.length());
-            stringBuilder.append(CHARACTERS.charAt(randomIndex));
-        }
-        return stringBuilder.toString();
+    private Redirect findRedirectByShortKey(String shortKey) {
+        return repository.findByShortKey(shortKey).orElseThrow(() ->
+                new NotFoundException(String.format("redirect not found by shortKey: %s", shortKey)));
     }
 
     public String findLongUrlByShortKey(String shortKey) {
@@ -74,13 +83,19 @@ public class UrlShortenerService {
     private void validateShortKey(String shortKey) {
     }
 
-    public ShortenedUrlStats getStats(String shortKey) {
+    public ShortenedUrlStats getStatistic(String shortKey) {
         Redirect redirect = findRedirectByShortKey(shortKey);
         return new ShortenedUrlStats(redirect.getUsages(), redirect.getCreationDate());
     }
 
-    private Redirect findRedirectByShortKey(String shortKey) {
-        return repository.findByShortKey(shortKey).orElseThrow(() ->
-                new NotFoundException(String.format("redirect not found by shortKey: %s", shortKey)));
+    private String generateShortKey() {
+        final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        Random random = new Random();
+        StringBuilder stringBuilder = new StringBuilder(shortKeySize);
+        for (int i = 0; i < shortKeySize; i++) {
+            int randomIndex = random.nextInt(CHARACTERS.length());
+            stringBuilder.append(CHARACTERS.charAt(randomIndex));
+        }
+        return stringBuilder.toString();
     }
 }

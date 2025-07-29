@@ -12,6 +12,6 @@ public class StatisticController extends ExceptionController {
 
     @GetMapping("stats/{shortKey}")
     public ShortenedUrlStats stats(@PathVariable String shortKey) {
-        return urlShortenerService.getStats(shortKey);
+        return urlShortenerService.getStatistic(shortKey);
     }
 }

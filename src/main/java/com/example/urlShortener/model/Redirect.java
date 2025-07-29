@@ -20,7 +20,7 @@ public class Redirect {
     @Column(unique = true)
     private String shortenedUrl;
 
-    @Column(unique = true)
+    @Column
     private String longUrl;
 
     @Column(unique = true)
