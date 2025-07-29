@@ -37,4 +37,8 @@ public class Redirect {
         this.creationDate = new Date();
         this.usages = 0L;
     }
+
+    public void incrementUsages() {
+        this.usages++;
+    }
 }

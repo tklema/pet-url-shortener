@@ -8,13 +8,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
-public class UseShortUrlController {
+public class UseShortUrlController extends ExceptionController {
     @Autowired
     private UrlShortenerService urlShortenerService;
 
     @GetMapping("/{shortKey}")
     public void redirect(@PathVariable String shortKey, HttpServletResponse response) {
-        String longUrl = urlShortenerService.findLongUrl(shortKey);
+        String longUrl = urlShortenerService.findLongUrlByShortKey(shortKey);
         response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", longUrl);
     }

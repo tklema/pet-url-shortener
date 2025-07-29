@@ -1,6 +1,8 @@
 package com.example.urlShortener.services;
 
+import com.example.urlShortener.model.NotFoundException;
 import com.example.urlShortener.model.Redirect;
+import com.example.urlShortener.model.ShortenedUrlStats;
 import com.example.urlShortener.model.UrlShortenerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,8 +24,10 @@ public class UrlShortenerService {
     public String shortenUrl(String longUrl) {
         validateUrl(longUrl);
 
-        if (repository.existsByLongUrl(longUrl)) {
-            return repository.findByLongUrl(longUrl).get().getShortenedUrl(); // TODO проверка на несуществование
+        try {
+            return findRedirectByLongUrl(longUrl).getShortenedUrl();
+        } catch (NotFoundException ignore) {
+            // ignored
         }
 
         String shortKey = generateShortKey();
@@ -34,6 +38,11 @@ public class UrlShortenerService {
         repository.save(redirect);
 
         return shortenedUrl;
+    }
+
+    private Redirect findRedirectByLongUrl(String longUrl) {
+        return repository.findByLongUrl(longUrl).orElseThrow(() ->
+                new NotFoundException(String.format("redirect not found by longUrl: %s", longUrl)));
     }
 
     private String generateShortKey() {
@@ -47,11 +56,31 @@ public class UrlShortenerService {
         return stringBuilder.toString();
     }
 
-    public String findLongUrl(String shortKey) {
-        return repository.findByShortKey(shortKey)
-                .orElseThrow(() -> new RuntimeException("URL not found"))
-                .getLongUrl();
+    public String findLongUrlByShortKey(String shortKey) {
+        validateShortKey(shortKey);
+
+        Redirect redirect = repository.findByShortKey(shortKey)
+                .orElseThrow(() -> new RuntimeException("URL not found"));
+        redirect.incrementUsages();
+
+        repository.save(redirect);
+
+        return redirect.getLongUrl();
     }
 
-    private void validateUrl(String url) {}
+    private void validateUrl(String url) {
+    }
+
+    private void validateShortKey(String shortKey) {
+    }
+
+    public ShortenedUrlStats getStats(String shortKey) {
+        Redirect redirect = findRedirectByShortKey(shortKey);
+        return new ShortenedUrlStats(redirect.getUsages(), redirect.getCreationDate());
+    }
+
+    private Redirect findRedirectByShortKey(String shortKey) {
+        return repository.findByShortKey(shortKey).orElseThrow(() ->
+                new NotFoundException(String.format("redirect not found by shortKey: %s", shortKey)));
+    }
 }
