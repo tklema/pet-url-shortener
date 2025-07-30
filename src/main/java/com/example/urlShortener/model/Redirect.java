@@ -17,11 +17,11 @@ public class Redirect {
     @GeneratedValue
     private Long id;
 
-    @Column(unique = true)
-    private String shortenedUrl;
-
     @Column
     private String longUrl;
+
+    @Column(unique = true)
+    private String shortenedUrl;
 
     @Column(unique = true)
     private String shortKey;
