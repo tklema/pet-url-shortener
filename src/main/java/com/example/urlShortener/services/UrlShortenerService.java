@@ -14,7 +14,7 @@ import java.util.Random;
 @Service
 public class UrlShortenerService {
     @Autowired
-    UrlShortenerRepository repository;
+    private UrlShortenerRepository repository;
 
     @Value("${domainPart}")
     private String domainPart = "http://localhost:8080/";
